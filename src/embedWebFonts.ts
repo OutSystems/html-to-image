@@ -19,7 +19,20 @@ function fetchCSS(url: string, window: Window): Promise<void | Metadata> {
 
   const deferred = window.fetch(url).then((res) => ({
     url,
-    cssText: res.text(),
+    // The first bytes received here when file as BOM encoding are not the actual BOM bytes but the Replacement character that UTF-8 uses for any invalid characters found
+    // Replacing the uFFFD (65533) is actually replacing all invalid characters that were replaced when decoding to UTF-8
+    cssText: res.blob().then((blob) => {
+      return new Promise<string>((resolve, reject) => {
+        const reader = new FileReader()
+        reader.onloadend = () => resolve(reader.result as string)
+        reader.onerror = reject
+        reader.readAsText(blob)
+      })
+
+      // const textDecoder = new TextDecoder('UTF-8')
+      // return text.arrayBuffer().then((dfd) => textDecoder.decode(dfd))
+      // return (text as any).replaceAll(/\uFFFD/g, "/*BOM HEADER*/");
+    }),
   }))
 
   cssFetchCache[url] = deferred
@@ -87,6 +100,12 @@ async function embedFonts(
 
   return meta.cssText.then((raw: string) => {
     let cssText = raw
+    // let cssText = raw.replace('\ufeff', '')
+    // let cssText = raw.replace('\u00EF\u00BB\u00BF', '')
+    // The first bytes received here are not the actual BOM bytes but the Replacement character that UTF-8 uses for any invalid characters
+    // Replacing the uFFFD (65533) is actually replacing all invalid characters that were replaced when decoding to UTF-8
+    // let cssText = raw.replace(/\uFFFD/g, '')
+    // let cssText = raw.substr(2)
     const regexUrl = /url\(["']?([^"')]+)["']?\)/g
     const fontLocs = cssText.match(/url\([^)]+\)/g) || []
     // const fontLocs5 = [fontLocs[4]]
@@ -137,7 +156,7 @@ async function embedFonts(
       window.setTimeout(() => {
         console.warn('Timed out')
         resolve('timeout')
-      }, 1000)
+      }, 5000)
     })
 
     // eslint-disable-next-line promise/no-nesting
@@ -159,12 +178,15 @@ function parseCSS(source: string) {
   }
 
   const result: string[] = []
+  // todo
   const commentsRegex = /(\/\*[\s\S]*?\*\/)/gi
   // strip out comments
-  let cssText = source.replace(commentsRegex, '')
+  const commentsMatches = commentsRegex.exec(source)
+  console.warn('commentsMatches: ', commentsMatches)
+  let cssText = (source as any).replaceAll(commentsRegex, '')
 
-  // strip out newlines
-  cssText = (cssText as any).replaceAll('\n', '')
+  // strip out newlines and carriage returns
+  cssText = (cssText as any).replaceAll(/[\r\n]/g, '')
 
   // replace tabular spaces
   cssText = (cssText as any).replaceAll('\t', ' ')
@@ -172,8 +194,10 @@ function parseCSS(source: string) {
   // strip out excessive spaces
   cssText = (cssText as any).replaceAll(/\s\s+/gi, ' ')
 
+  // TODO: plm this one is having a different behaviour in the online regex tester and in runtime
   const keyframesRegex = new RegExp(
     /@(-moz-|-webkit-|-ms-)*keyframes\s(\S)+(\s?){(\s?\d%\s?{[-\w:\w+();\s]+}\s?\d+%\s?{[\w:\w();-\s]+)+}}/,
+    // /@(-moz-|-webkit-|-ms-)*keyframes\s(\S)+(\s?){(\s?\d%\s?{[-\w:\w+();\s]+}\s?\d+%\s?{[\w:\w();-\s]+)+}\s?}/,
     'gi',
   )
   // eslint-disable-next-line no-constant-condition
@@ -184,13 +208,12 @@ function parseCSS(source: string) {
     }
     result.push(matches[0])
   }
-  cssText = cssText.replace(keyframesRegex, '')
+  cssText = (cssText as any).replaceAll(keyframesRegex, '')
 
   const importRegex = /@import[\s\S]*?url\([^)]*\)[\s\S]*?;/gi
   // to match css & media queries together
   const combinedCSSRegex =
-    '((\\s*?(?:\\/\\*[\\s\\S]*?\\*\\/)?\\s*?@media[\\s\\S]' +
-    '*?){([\\s\\S]*?)}\\s*?})|(([\\s\\S]*?){([\\s\\S]*?)})'
+    /((\s*?(?:\/\*[\s\S]*?\*\/)?\s*?@media[\s\S]*?){([\s\S]*?)}\s*?})|(([\s\S]*?){([\s\S]*?)})/
   // unified regex
   const unifiedRegex = new RegExp(combinedCSSRegex, 'gi')
   // eslint-disable-next-line no-constant-condition
@@ -245,10 +268,11 @@ async function getCSSRules(
                           : sheet.cssRules.length,
                       )
                     } catch (error) {
-                      console.error('Error inserting rule from remote css', {
-                        trimmedRule,
-                        error,
-                      })
+                      console.error(error)
+                      // console.error('Error inserting rule from remote css', {
+                      //   trimmedRule,
+                      //   error,
+                      // })
                     }
                   }),
                 )
