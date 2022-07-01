@@ -30,12 +30,17 @@ async function cloneSingleNode<T extends HTMLElement>(
   options: Options,
   window: Window,
 ): Promise<HTMLElement> {
-  if (node instanceof HTMLCanvasElement) {
-    return cloneCanvasElement(node)
+  const ownerWindow = window as any
+  if (node instanceof ownerWindow.HTMLCanvasElement) {
+    console.error('Node is HTMLCanvas inside window')
+    return cloneCanvasElement(node as any)
   }
 
-  if (node instanceof HTMLVideoElement && node.poster) {
-    return cloneVideoElement(node, options, window)
+  if (node instanceof ownerWindow.HTMLVideoElement) {
+    const nodeAsAny = node as any
+    if (nodeAsAny.poster) {
+      return cloneVideoElement(nodeAsAny, options, window)
+    }
   }
 
   return Promise.resolve(node.cloneNode(false) as T)
@@ -105,13 +110,18 @@ function cloneCSSStyle<T extends HTMLElement>(
   }
 }
 
-function cloneInputValue<T extends HTMLElement>(nativeNode: T, clonedNode: T) {
-  if (nativeNode instanceof HTMLTextAreaElement) {
-    clonedNode.innerHTML = nativeNode.value
+function cloneInputValue<T extends HTMLElement>(
+  nativeNode: T,
+  clonedNode: T,
+  window: Window,
+) {
+  const ownerWindow = window as any
+  if (nativeNode instanceof ownerWindow.HTMLTextAreaElement) {
+    clonedNode.innerHTML = (nativeNode as unknown as HTMLTextAreaElement).value
   }
 
-  if (nativeNode instanceof HTMLInputElement) {
-    clonedNode.setAttribute('value', nativeNode.value)
+  if (nativeNode instanceof ownerWindow.HTMLInputElement) {
+    clonedNode.innerHTML = (nativeNode as unknown as HTMLInputElement).value
   }
 }
 
@@ -128,7 +138,7 @@ async function decorate<T extends HTMLElement>(
   return Promise.resolve()
     .then(() => cloneCSSStyle(nativeNode, clonedNode, window))
     .then(() => clonePseudoElements(nativeNode, clonedNode, document, window))
-    .then(() => cloneInputValue(nativeNode, clonedNode))
+    .then(() => cloneInputValue(nativeNode, clonedNode, window))
     .then(() => clonedNode)
 }
 

@@ -56,7 +56,7 @@ export interface Options {
    */
   imagePlaceholder?: string
   /**
-   * The pixel ratio of captured image. Defalut is the actual pixel ratio of
+   * The pixel ratio of captured image. Default is the actual pixel ratio of
    * the device. Set 1 to use as initial-scale 1 for the image
    */
   pixelRatio?: number

@@ -19,8 +19,6 @@ function fetchCSS(url: string, window: Window): Promise<void | Metadata> {
 
   const deferred = window.fetch(url).then((res) => ({
     url,
-    // The first bytes received here when file as BOM encoding are not the actual BOM bytes but the Replacement character that UTF-8 uses for any invalid characters found
-    // Replacing the uFFFD (65533) is actually replacing all invalid characters that were replaced when decoding to UTF-8
     cssText: res.blob().then((blob) => {
       return new Promise<string>((resolve, reject) => {
         const reader = new FileReader()
@@ -28,10 +26,6 @@ function fetchCSS(url: string, window: Window): Promise<void | Metadata> {
         reader.onerror = reject
         reader.readAsText(blob)
       })
-
-      // const textDecoder = new TextDecoder('UTF-8')
-      // return text.arrayBuffer().then((dfd) => textDecoder.decode(dfd))
-      // return (text as any).replaceAll(/\uFFFD/g, "/*BOM HEADER*/");
     }),
   }))
 
@@ -45,67 +39,8 @@ async function embedFonts(
   document: Document,
   window: Window,
 ): Promise<string> {
-  // const raw = await meta.cssText
-  // let cssText = raw
-  // const regexUrl = /url\(["']?([^"')]+)["']?\)/g
-  // const fontLocs = cssText.match(/url\([^)]+\)/g) || []
-
-  // const loadFonts = fontLocs.map(async (loc: string, index: number) => {
-  //   try {
-  //     let url = loc.replace(regexUrl, '$1')
-
-  //     if (!url.startsWith('https://')) {
-  //       url = new URL(url, meta.url).href
-  //     }
-
-  //     console.warn(` iteration ${index} location: ${url}`)
-
-  //     // eslint-disable-next-line promise/no-nesting
-  //     const fetchData = await window.fetch(url)
-
-  //     console.warn(`fetched ${url}`)
-
-  //     const blob = await fetchData.blob()
-
-  //     console.warn(`fetched blob ${url}`)
-
-  //     return await (new Promise<void>((resolve, reject) => {
-  //       const reader = new FileReader()
-  //       reader.onloadend = () => {
-  //         console.warn(`filereader loadend ${url}`)
-  //         // Side Effect
-  //         cssText = cssText.replace(loc, `url(${reader.result})`)
-  //         resolve()
-  //       }
-
-  //       reader.onerror = () => {
-  //         console.warn(`filereader error ${url}`)
-  //         reject()
-  //       }
-
-  //       reader.readAsDataURL(blob)
-  //     })
-  //   } catch (e) {
-  //     console.warn('error loading font location', e)
-  //     return Promise.resolve()
-  //   }
-  // })
-
-  // // eslint-disable-next-line promise/no-nesting
-  // await Promise.all(loadFonts)
-
-  // loadFonts.map((p) => console.warn('log', p))
-
-  // return cssText
-
   return meta.cssText.then((raw: string) => {
     let cssText = raw
-    // let cssText = raw.replace('\ufeff', '')
-    // let cssText = raw.replace('\u00EF\u00BB\u00BF', '')
-    // The first bytes received here are not the actual BOM bytes but the Replacement character that UTF-8 uses for any invalid characters
-    // Replacing the uFFFD (65533) is actually replacing all invalid characters that were replaced when decoding to UTF-8
-    // let cssText = raw.replace(/\uFFFD/g, '')
-    // let cssText = raw.substr(2)
     const regexUrl = /url\(["']?([^"')]+)["']?\)/g
     const fontLocs = cssText.match(/url\([^)]+\)/g) || []
     // const fontLocs5 = [fontLocs[4]]
@@ -178,11 +113,9 @@ function parseCSS(source: string) {
   }
 
   const result: string[] = []
-  // todo
-  const commentsRegex = /(\/\*[\s\S]*?\*\/)/gi
+
   // strip out comments
-  const commentsMatches = commentsRegex.exec(source)
-  console.warn('commentsMatches: ', commentsMatches)
+  const commentsRegex = /(\/\*[\s\S]*?\*\/)/gi
   let cssText = (source as any).replaceAll(commentsRegex, '')
 
   // strip out newlines and carriage returns
@@ -194,10 +127,8 @@ function parseCSS(source: string) {
   // strip out excessive spaces
   cssText = (cssText as any).replaceAll(/\s\s+/gi, ' ')
 
-  // TODO: plm this one is having a different behaviour in the online regex tester and in runtime
   const keyframesRegex = new RegExp(
-    /@(-moz-|-webkit-|-ms-)*keyframes\s(\S)+(\s?){(\s?\d%\s?{[-\w:\w+();\s]+}\s?\d+%\s?{[\w:\w();-\s]+)+}}/,
-    // /@(-moz-|-webkit-|-ms-)*keyframes\s(\S)+(\s?){(\s?\d%\s?{[-\w:\w+();\s]+}\s?\d+%\s?{[\w:\w();-\s]+)+}\s?}/,
+    /@(-moz-|-webkit-|-ms-)*keyframes\s(\S)+(\s?){(\s?\d%\s?{[-\w:\w+();\s]+}\s?\d+%\s?{[\w:\w();-\s]+)+}\s?}/,
     'gi',
   )
   // eslint-disable-next-line no-constant-condition
@@ -268,11 +199,10 @@ async function getCSSRules(
                           : sheet.cssRules.length,
                       )
                     } catch (error) {
-                      console.error(error)
-                      // console.error('Error inserting rule from remote css', {
-                      //   trimmedRule,
-                      //   error,
-                      // })
+                      console.error('Error inserting rule from remote css', {
+                        trimmedRule,
+                        error,
+                      })
                     }
                   }),
                 )

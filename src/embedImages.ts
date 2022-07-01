@@ -35,12 +35,11 @@ async function embedImageNode<T extends HTMLElement | SVGImageElement>(
   window: Window,
 ): Promise<T> {
   const node = clonedNode as any
+  const ownerWindow = window as any
   if (
+    !(node instanceof ownerWindow.HTMLImageElement && !isDataUrl(node.src)) &&
     !(
-      node instanceof (window as any).HTMLImageElement && !isDataUrl(node.src)
-    ) &&
-    !(
-      node instanceof (window as any).SVGImageElement &&
+      node instanceof ownerWindow.SVGImageElement &&
       !isDataUrl(node.href.baseVal)
     )
   ) {
@@ -48,9 +47,7 @@ async function embedImageNode<T extends HTMLElement | SVGImageElement>(
   }
 
   const src =
-    node instanceof (window as any).HTMLImageElement
-      ? node.src
-      : node.href.baseVal
+    node instanceof ownerWindow.HTMLImageElement ? node.src : node.href.baseVal
 
   return Promise.resolve(src)
     .then((url) => getBlobFromURL(url, options, window))
@@ -62,7 +59,7 @@ async function embedImageNode<T extends HTMLElement | SVGImageElement>(
         new Promise((resolve, reject) => {
           node.onload = resolve
           node.onerror = reject
-          if (node instanceof (window as any).HTMLImageElement) {
+          if (node instanceof ownerWindow.HTMLImageElement) {
             node.srcset = ''
             node.src = dataURL
           } else {
