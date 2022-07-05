@@ -45,11 +45,6 @@ export interface Options {
    */
   includeQueryParams?: boolean
   /**
-   * Set true to avoid cloning the passed node.
-   * Default: false | undefined - which clones the node that was passed in
-   */
-  skipNodeClone?: boolean
-  /**
    * A data URL for a placeholder image that will be used when fetching
    * an image fails. Defaults to an empty string and will render empty
    * areas for failed images.
@@ -90,4 +85,8 @@ export interface Options {
    * Here it is possible to manipulate dom and/or styling of nodes
    */
   applyCustomTransformation?: (domNode: HTMLElement) => void
+  /**
+   * TODO: Testing purposes at the moment. Delete if not needed
+   */
+  ownerWindow?: Window
 }

@@ -31,23 +31,12 @@ export async function toSvg<T extends HTMLElement>(
 ): Promise<string> {
   const { width, height } = getImageSize(node, options, nodeWindow)
 
-  const nodePromise = Promise.resolve(node)
-  // let toSvgPromise: Promise<string>
-
-  // if (options.skipNodeClone) {
-  //   toSvgPromise = nodePromise.then((clonedNode) =>
-  //     nodeToDataURL(clonedNode, width, height, doc),
-  //   )
-  // } else {
-  return nodePromise
+  return Promise.resolve(node)
     .then((nativeNode) => cloneNode(nativeNode, options, doc, nodeWindow, true))
     .then((clonedNode) => embedWebFonts(clonedNode!, options, doc, nodeWindow))
     .then((clonedNode) => embedImages(clonedNode, options, doc, nodeWindow))
     .then((clonedNode) => applyStyleWithOptions(clonedNode, options))
     .then((clonedNode) => nodeToDataURL(clonedNode, width, height, doc))
-  // }
-
-  // return toSvgPromise
 }
 
 const dimensionCanvasLimit = 16384 // as per https://developer.mozilla.org/en-US/docs/Web/HTML/Element/canvas#maximum_canvas_size
