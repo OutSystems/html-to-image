@@ -1,3 +1,15 @@
+export interface Boundaries {
+  x: number
+  y: number
+  width: number
+  height: number
+}
+
+export interface Section {
+  source: Boundaries
+  target: Boundaries
+}
+
 export interface Options {
   /**
    * Width in pixels to be applied to node before rendering.
@@ -89,4 +101,5 @@ export interface Options {
    * TODO: Testing purposes at the moment. Delete if not needed
    */
   ownerWindow?: Window
+  screenshotSection?: Section
 }
