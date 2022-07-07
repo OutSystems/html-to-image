@@ -78,21 +78,7 @@ async function embedFonts(
         })
     })
 
-    const timeoutPromise = new Promise<string>((resolve, reject) => {
-      window.setTimeout(() => {
-        resolve('timeout')
-      }, 3000)
-    })
-
-    // eslint-disable-next-line promise/no-nesting
-    return Promise.race([Promise.all(loadFonts), timeoutPromise]).then(
-      (value) => {
-        if (value === 'timeout') {
-          console.warn('Race timeout')
-        }
-        return cssText
-      },
-    )
+    return Promise.allSettled(loadFonts).then((value) => cssText)
   })
 }
 

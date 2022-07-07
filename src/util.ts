@@ -37,7 +37,6 @@ export function fetchWithTimeout(
   }, timeoutInMs)
   return window
     .fetch(url, {
-      mode: 'no-cors', // this avoids failures when fetching resources to external domains inside iframes but the response will be empty so the fetch is not successful anyway
       signal: fetchAbortController.signal,
     })
     .finally(() => clearTimeout(fetchTimeoutId))

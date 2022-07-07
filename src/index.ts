@@ -80,7 +80,7 @@ export async function toCanvas<T extends HTMLElement>(
   let nodeToDraw: HTMLElement
   let nodeWindow: Window
   if (node instanceof HTMLIFrameElement) {
-    const iframe = <HTMLIFrameElement>node
+    const iframe = node
     doc = iframe.contentDocument ?? document
     nodeToDraw = doc.body as HTMLElement
     nodeWindow = iframe.contentWindow ?? window

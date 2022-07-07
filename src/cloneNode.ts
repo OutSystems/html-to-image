@@ -52,7 +52,7 @@ async function cloneChildren<T extends HTMLElement>(
   nativeNode: T,
   clonedNode: T,
   options: Options,
-  doc: Document,
+  document: Document,
   window: Window,
 ): Promise<T> {
   const children =
@@ -72,7 +72,7 @@ async function cloneChildren<T extends HTMLElement>(
       (deferred, child) =>
         deferred
           // eslint-disable-next-line no-use-before-define
-          .then(() => cloneNode(child, options, doc, window))
+          .then(() => cloneNode(child, options, document, window))
           .then((clonedChild: HTMLElement | null) => {
             // eslint-disable-next-line promise/always-return
             if (clonedChild) {
