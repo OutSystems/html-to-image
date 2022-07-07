@@ -43,7 +43,6 @@ async function embedFonts(
     let cssText = raw
     const regexUrl = /url\(["']?([^"')]+)["']?\)/g
     const fontLocs = cssText.match(/url\([^)]+\)/g) || []
-    // const fontLocs5 = [fontLocs[4]]
     const loadFonts = fontLocs.map((loc: string, index: number) => {
       const url = loc.replace(regexUrl, '$1')
 
@@ -53,21 +52,14 @@ async function embedFonts(
         urlToFetch = new URL(urlToFetch, meta.url).href
       }
 
-      console.warn(` iteration ${index} location: ${urlToFetch}`)
-
       // eslint-disable-next-line promise/no-nesting
       return fetchWithTimeout(window, urlToFetch)
-        .then((res) => {
-          console.warn(`fetched ${urlToFetch}`)
-          return res.blob()
-        })
+        .then((res) => res.blob())
         .then((blob) => {
-          console.warn(`fetched blob for ${urlToFetch}`)
           return new Promise<[string, string | ArrayBuffer | null]>(
             (resolve, reject) => {
               const reader = new FileReader()
               reader.onloadend = () => {
-                console.warn(`filereader loadend ${urlToFetch}`)
                 // Side Effect
                 cssText = cssText.replace(loc, `url(${reader.result})`)
                 resolve([loc, reader.result])
@@ -88,9 +80,8 @@ async function embedFonts(
 
     const timeoutPromise = new Promise<string>((resolve, reject) => {
       window.setTimeout(() => {
-        console.warn('Timed out')
         resolve('timeout')
-      }, 5000)
+      }, 3000)
     })
 
     // eslint-disable-next-line promise/no-nesting
@@ -99,7 +90,6 @@ async function embedFonts(
         if (value === 'timeout') {
           console.warn('Race timeout')
         }
-        console.warn('Returning cssText')
         return cssText
       },
     )
@@ -169,7 +159,6 @@ async function getCSSRules(
   styleSheets: CSSStyleSheet[],
   document: Document,
   window: Window,
-  options: Options,
 ): Promise<CSSStyleRule[]> {
   const ret: CSSStyleRule[] = []
   const deferreds: Promise<number | void>[] = []
@@ -271,7 +260,6 @@ async function parseWebFontRules<T extends HTMLElement>(
   node: T,
   document: Document,
   window: Window,
-  options: Options,
 ): Promise<CSSRule[]> {
   return new Promise((resolve, reject) => {
     if (node.ownerDocument == null) {
@@ -280,7 +268,7 @@ async function parseWebFontRules<T extends HTMLElement>(
     resolve(toArray(node.ownerDocument.styleSheets))
   })
     .then((styleSheets: CSSStyleSheet[]) =>
-      getCSSRules(styleSheets, document, window, options),
+      getCSSRules(styleSheets, document, window),
     )
     .then(getWebFontRules)
 }
@@ -291,7 +279,7 @@ export async function getWebFontCSS<T extends HTMLElement>(
   document: Document,
   window: Window,
 ): Promise<string> {
-  return parseWebFontRules(node, document, window, options)
+  return parseWebFontRules(node, document, window)
     .then((rules) =>
       Promise.all(
         rules.map((rule) => {

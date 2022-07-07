@@ -116,7 +116,12 @@ export async function toCanvas<T extends HTMLElement>(
       }
 
       if (options.section) {
-        const { x, y, width: sectionWidth, height: sectionHeight } = options.section
+        const {
+          x,
+          y,
+          width: sectionWidth,
+          height: sectionHeight,
+        } = options.section
 
         canvas.width = sectionWidth
         canvas.height = sectionHeight
