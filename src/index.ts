@@ -25,18 +25,24 @@ function getImageSize(
 
 export async function toSvg<T extends HTMLElement>(
   node: T,
-  options: Options = {},
-  doc: Document,
+  document: Document,
   nodeWindow: Window,
+  options: Options = {},
 ): Promise<string> {
   const { width, height } = getImageSize(node, options, nodeWindow)
 
   return Promise.resolve(node)
-    .then((nativeNode) => cloneNode(nativeNode, options, doc, nodeWindow, true))
-    .then((clonedNode) => embedWebFonts(clonedNode!, options, doc, nodeWindow))
-    .then((clonedNode) => embedImages(clonedNode, options, doc, nodeWindow))
+    .then((nativeNode) =>
+      cloneNode(nativeNode, options, document, nodeWindow, true),
+    )
+    .then((clonedNode) =>
+      embedWebFonts(clonedNode!, options, document, nodeWindow),
+    )
+    .then((clonedNode) =>
+      embedImages(clonedNode, options, document, nodeWindow),
+    )
     .then((clonedNode) => applyStyleWithOptions(clonedNode, options))
-    .then((clonedNode) => nodeToDataURL(clonedNode, width, height, doc))
+    .then((clonedNode) => nodeToDataURL(clonedNode, width, height, document))
 }
 
 const dimensionCanvasLimit = 16384 // as per https://developer.mozilla.org/en-US/docs/Web/HTML/Element/canvas#maximum_canvas_size
@@ -84,7 +90,7 @@ export async function toCanvas<T extends HTMLElement>(
     nodeWindow = window
   }
 
-  return toSvg(nodeToDraw, options, doc, nodeWindow)
+  return toSvg(nodeToDraw, doc, nodeWindow, options)
     .then(createImage)
     .then((img) => {
       const canvas = doc.createElement('canvas')
@@ -138,8 +144,8 @@ export async function toCanvas<T extends HTMLElement>(
 
 export async function toPixelData<T extends HTMLElement>(
   node: T,
-  options: Options = {},
   window: Window,
+  options: Options = {},
 ): Promise<Uint8ClampedArray> {
   const { width, height } = getImageSize(node, options, window)
   return toCanvas(node, options).then((canvas) => {

@@ -27,9 +27,9 @@ export function embed(
   cssText: string,
   resourceURL: string,
   baseURL: string | null,
-  options: Options,
   document: Document,
   window: Window,
+  options: Options,
   get?: (url: string) => Promise<string>,
 ): Promise<string> {
   const resolvedURL = baseURL
@@ -102,7 +102,7 @@ export async function embedResources(
         (deferred, url) =>
           // eslint-disable-next-line promise/no-nesting
           deferred.then((css) =>
-            embed(css, url, baseUrl, options, document, window),
+            embed(css, url, baseUrl, document, window, options),
           ),
         Promise.resolve(filteredCSSText),
       ),
