@@ -116,23 +116,23 @@ export async function toCanvas<T extends HTMLElement>(
       }
 
       if (options.section) {
-        const { x, y, width, height } = options.section
+        const { x, y, width: sectionWidth, height: sectionHeight } = options.section
 
-        canvas.width = width
-        canvas.height = height
-        canvas.style.width = `${width}px`
-        canvas.style.height = `${height}px`
+        canvas.width = sectionWidth
+        canvas.height = sectionHeight
+        canvas.style.width = `${sectionWidth}px`
+        canvas.style.height = `${sectionHeight}px`
 
         context.drawImage(
           /* image */ img,
           /* sx */ x,
           /* sy */ y,
-          /* sWidth */ width,
-          /* sHeight */ height,
+          /* sWidth */ sectionWidth,
+          /* sHeight */ sectionHeight,
           /* dx */ 0,
           /* dy */ 0,
-          /* dWidth */ width,
-          /* dHeight */ height,
+          /* dWidth */ sectionWidth,
+          /* dHeight */ sectionHeight,
         )
       } else {
         context.drawImage(img, 0, 0, canvas.width, canvas.height)
