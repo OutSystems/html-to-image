@@ -32,7 +32,6 @@ async function cloneSingleNode<T extends HTMLElement>(
 ): Promise<HTMLElement> {
   const ownerWindow = window as any
   if (node instanceof ownerWindow.HTMLCanvasElement) {
-    console.error('Node is HTMLCanvas inside window')
     return cloneCanvasElement(node as any)
   }
 
@@ -145,7 +144,7 @@ async function decorate<T extends HTMLElement>(
 export async function cloneNode<T extends HTMLElement>(
   node: T,
   options: Options,
-  doc: Document,
+  document: Document,
   nodeWindow: Window,
   isRoot?: boolean,
 ): Promise<T | null> {
@@ -159,7 +158,7 @@ export async function cloneNode<T extends HTMLElement>(
         cloneSingleNode(clonedNode, options, nodeWindow) as Promise<T>,
     )
     .then((clonedNode) =>
-      cloneChildren(node, clonedNode, options, doc, nodeWindow),
+      cloneChildren(node, clonedNode, options, document, nodeWindow),
     )
-    .then((clonedNode) => decorate(node, clonedNode, doc, nodeWindow))
+    .then((clonedNode) => decorate(node, clonedNode, document, nodeWindow))
 }

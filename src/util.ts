@@ -23,6 +23,26 @@ export function getMimeType(url: string): string {
   return mimes[extension] || ''
 }
 
+export function fetchWithTimeout(
+  window: Window,
+  url: string,
+  timeoutInMs = 3000,
+): Promise<Response> {
+  const fetchAbortController = new AbortController()
+  const fetchTimeoutId = setTimeout(() => {
+    fetchAbortController.abort()
+    console.warn(
+      `Fetch exceeded the defined timeout of ${timeoutInMs}ms. Requested url was ${url}`,
+    )
+  }, timeoutInMs)
+  return window
+    .fetch(url, {
+      mode: 'no-cors', // this avoids failures when fetching resources to external domains inside iframes but the response will be empty so the fetch is not successful anyway
+      signal: fetchAbortController.signal,
+    })
+    .finally(() => clearTimeout(fetchTimeoutId))
+}
+
 export function resolveUrl(
   url: string,
   baseUrl: string | null,

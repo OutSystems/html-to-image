@@ -97,9 +97,6 @@ export interface Options {
    * Here it is possible to manipulate dom and/or styling of nodes
    */
   applyCustomTransformation?: (domNode: HTMLElement) => void
-  /**
-   * TODO: Testing purposes at the moment. Delete if not needed
-   */
-  ownerWindow?: Window
+
   screenshotSection?: Section
 }

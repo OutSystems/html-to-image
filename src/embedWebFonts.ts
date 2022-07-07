@@ -1,4 +1,4 @@
-import { resolveUrl, toArray } from './util'
+import { fetchWithTimeout, resolveUrl, toArray } from './util'
 import { Options } from './options'
 import { shouldEmbed, embedResources } from './embedResources'
 
@@ -17,7 +17,7 @@ function fetchCSS(url: string, window: Window): Promise<void | Metadata> {
     return cache
   }
 
-  const deferred = window.fetch(url).then((res) => ({
+  const deferred = fetchWithTimeout(window, url).then((res) => ({
     url,
     cssText: res.blob().then((blob) => {
       return new Promise<string>((resolve, reject) => {
@@ -56,8 +56,7 @@ async function embedFonts(
       console.warn(` iteration ${index} location: ${urlToFetch}`)
 
       // eslint-disable-next-line promise/no-nesting
-      return window
-        .fetch(urlToFetch)
+      return fetchWithTimeout(window, urlToFetch)
         .then((res) => {
           console.warn(`fetched ${urlToFetch}`)
           return res.blob()
@@ -170,6 +169,7 @@ async function getCSSRules(
   styleSheets: CSSStyleSheet[],
   document: Document,
   window: Window,
+  options: Options,
 ): Promise<CSSStyleRule[]> {
   const ret: CSSStyleRule[] = []
   const deferreds: Promise<number | void>[] = []
@@ -185,9 +185,9 @@ async function getCSSRules(
               const url = (item as CSSImportRule).href
               const urlToFetch = resolveUrl(url, sheet.href, document, window)
               const deferred = fetchCSS(urlToFetch, window)
-                .then((metadata) =>
-                  metadata ? embedFonts(metadata, document, window) : '',
-                )
+                .then((metadata) => {
+                  return metadata ? embedFonts(metadata, document, window) : ''
+                })
                 .then((cssText) =>
                   parseCSS(cssText).forEach((rule) => {
                     const trimmedRule = rule.trim()
@@ -271,6 +271,7 @@ async function parseWebFontRules<T extends HTMLElement>(
   node: T,
   document: Document,
   window: Window,
+  options: Options,
 ): Promise<CSSRule[]> {
   return new Promise((resolve, reject) => {
     if (node.ownerDocument == null) {
@@ -279,7 +280,7 @@ async function parseWebFontRules<T extends HTMLElement>(
     resolve(toArray(node.ownerDocument.styleSheets))
   })
     .then((styleSheets: CSSStyleSheet[]) =>
-      getCSSRules(styleSheets, document, window),
+      getCSSRules(styleSheets, document, window, options),
     )
     .then(getWebFontRules)
 }
@@ -290,7 +291,7 @@ export async function getWebFontCSS<T extends HTMLElement>(
   document: Document,
   window: Window,
 ): Promise<string> {
-  return parseWebFontRules(node, document, window)
+  return parseWebFontRules(node, document, window, options)
     .then((rules) =>
       Promise.all(
         rules.map((rule) => {

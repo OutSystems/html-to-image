@@ -1,5 +1,5 @@
 import { Options } from './options'
-import { parseDataUrlContent } from './util'
+import { fetchWithTimeout, parseDataUrlContent } from './util'
 
 export interface Metadata {
   blob: string
@@ -63,8 +63,7 @@ export function getBlobFromURL(
     }
   }
 
-  const deferred = window
-    .fetch(url)
+  const deferred = fetchWithTimeout(window, url)
     .then((res) =>
       // eslint-disable-next-line promise/no-nesting
       res.blob().then((blob) => ({

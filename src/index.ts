@@ -111,12 +111,12 @@ export async function toCanvas<T extends HTMLElement>(
 
       if (options.screenshotSection) {
         const { source, target } = options.screenshotSection
-    
+
         canvas.width = target.width
         canvas.height = target.height
         canvas.style.width = `${target.width}px`
         canvas.style.height = `${target.height}px`
-    
+
         context.drawImage(
           /* image */ img,
           /* sx */ source.x,
