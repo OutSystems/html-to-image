@@ -1,13 +1,11 @@
-export interface Boundaries {
+/**
+ * The section to be exported
+ */
+export interface Section {
   x: number
   y: number
   width: number
   height: number
-}
-
-export interface Section {
-  source: Boundaries
-  target: Boundaries
 }
 
 export interface Options {
@@ -97,6 +95,8 @@ export interface Options {
    * Here it is possible to manipulate dom and/or styling of nodes
    */
   applyCustomTransformation?: (domNode: HTMLElement) => void
-
-  screenshotSection?: Section
+  /**
+   * The part of the image to be exported
+   */
+  section?: Section
 }

@@ -115,24 +115,24 @@ export async function toCanvas<T extends HTMLElement>(
         context.fillRect(0, 0, canvas.width, canvas.height)
       }
 
-      if (options.screenshotSection) {
-        const { source, target } = options.screenshotSection
+      if (options.section) {
+        const { x, y, width, height } = options.section
 
-        canvas.width = target.width
-        canvas.height = target.height
-        canvas.style.width = `${target.width}px`
-        canvas.style.height = `${target.height}px`
+        canvas.width = width
+        canvas.height = height
+        canvas.style.width = `${width}px`
+        canvas.style.height = `${height}px`
 
         context.drawImage(
           /* image */ img,
-          /* sx */ source.x,
-          /* sy */ source.y,
-          /* sWidth */ source.width,
-          /* sHeight */ source.height,
-          /* dx */ target.x,
-          /* dy */ target.y,
-          /* dWidth */ target.width,
-          /* dHeight */ target.height,
+          /* sx */ x,
+          /* sy */ y,
+          /* sWidth */ width,
+          /* sHeight */ height,
+          /* dx */ 0,
+          /* dy */ 0,
+          /* dWidth */ width,
+          /* dHeight */ height,
         )
       } else {
         context.drawImage(img, 0, 0, canvas.width, canvas.height)
