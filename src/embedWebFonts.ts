@@ -34,55 +34,106 @@ function fetchCSS(url: string, window: Window): Promise<void | Metadata> {
   return deferred
 }
 
+function selectorsCompletelyAppliesToRule(
+  selectors: string[],
+  rule: CSSRule,
+): boolean {
+  if (rule.type === CSSRule.STYLE_RULE) {
+    const styleRule = rule as CSSStyleRule
+    const styleRuleSelectors = styleRule.selectorText.split(',')
+
+    return styleRuleSelectors.every((ruleSelector) => {
+      return selectors.some((selector) => ruleSelector.includes(selector))
+    })
+  }
+
+  // We are not applying to other types of rules
+  return false
+}
+
 async function embedFonts(
   meta: Metadata,
+  options: Options,
   document: Document,
   window: Window,
 ): Promise<string> {
-  return meta.cssText.then((raw: string) => {
-    let cssText = raw
-    const regexUrl = /url\(["']?([^"')]+)["']?\)/g
-    const fontLocs = cssText.match(/url\([^)]+\)/g) || []
-    const loadFonts = fontLocs.map((loc: string, index: number) => {
-      const url = loc.replace(regexUrl, '$1')
+  let cssText = await meta.cssText
 
-      let urlToFetch = resolveUrl(url, meta.url, document, window)
+  if (
+    options.filterCSSRuleBySelectors &&
+    options.filterCSSRuleBySelectors.length > 0
+  ) {
+    let stylesheet = new CSSStyleSheet()
 
-      if (!urlToFetch.startsWith('https://')) {
-        urlToFetch = new URL(urlToFetch, meta.url).href
-      }
+    stylesheet = await stylesheet.replace(cssText)
 
-      // eslint-disable-next-line promise/no-nesting
-      return fetchWithTimeout(window, urlToFetch)
-        .then((res) => res.blob())
-        .then((blob) => {
-          return new Promise<[string, string | ArrayBuffer | null]>(
-            (resolve, reject) => {
-              const reader = new FileReader()
-              reader.onloadend = () => {
-                // Side Effect
-                cssText = cssText.replace(loc, `url(${reader.result})`)
-                resolve([loc, reader.result])
-              }
-              reader.onerror = () => {
-                console.warn(`filereader error ${urlToFetch}`)
-                reject()
-              }
-              reader.readAsDataURL(blob)
-            },
-          )
-        })
-        .catch((reason) => {
-          console.warn(`Failed to load font ${urlToFetch} `, reason)
-          return Promise.resolve(null)
-        })
-    })
+    // const styleSheetRules = new Array<string>()
+    // for (let i = 0; i < stylesheet.cssRules.length; i += 1) {
+    //   const rule = stylesheet.cssRules.item(i)
+    //   if (
+    //     rule != null &&
+    //     !selectorsCompletelyAppliesToRule(
+    //       options.filterCSSRuleBySelectors,
+    //       rule,
+    //     )
+    //   ) {
+    //     styleSheetRules.push(rule.cssText)
+    //   }
+    // }
 
-    return Promise.allSettled(loadFonts).then((value) => cssText)
+    let styleSheetRules = toArray<CSSRule>(stylesheet.cssRules)
+    styleSheetRules = styleSheetRules.filter(
+      (rule) =>
+        rule != null &&
+        !selectorsCompletelyAppliesToRule(
+          options.filterCSSRuleBySelectors || [],
+          rule,
+        ),
+    )
+    cssText = styleSheetRules.map((r) => r.cssText).join('\n')
+  }
+
+  const regexUrl = /url\(["']?([^"')]+)["']?\)/g
+  const fontLocs = cssText.match(/url\([^)]+\)/g) || []
+  const loadFonts = fontLocs.map((loc: string, index: number) => {
+    const url = loc.replace(regexUrl, '$1')
+
+    let urlToFetch = resolveUrl(url, meta.url, document, window)
+
+    if (!urlToFetch.startsWith('https://')) {
+      urlToFetch = new URL(urlToFetch, meta.url).href
+    }
+
+    // eslint-disable-next-line promise/no-nesting
+    return fetchWithTimeout(window, urlToFetch)
+      .then((res) => res.blob())
+      .then((blob) => {
+        return new Promise<[string, string | ArrayBuffer | null]>(
+          (resolve, reject) => {
+            const reader = new FileReader()
+            reader.onloadend = () => {
+              // Side Effect
+              cssText = cssText.replace(loc, `url(${reader.result})`)
+              resolve([loc, reader.result])
+            }
+            reader.onerror = () => {
+              console.warn(`filereader error ${urlToFetch}`)
+              reject()
+            }
+            reader.readAsDataURL(blob)
+          },
+        )
+      })
+      .catch((reason) => {
+        console.warn(`Failed to load font ${urlToFetch} `, reason)
+        return Promise.resolve(null)
+      })
   })
+
+  return Promise.allSettled(loadFonts).then((value) => cssText)
 }
 
-function parseCSS(source: string) {
+function parseCSS(source: string): string[] {
   if (source == null) {
     return []
   }
@@ -143,6 +194,7 @@ function parseCSS(source: string) {
 
 async function getCSSRules(
   styleSheets: CSSStyleSheet[],
+  options: Options,
   document: Document,
   window: Window,
 ): Promise<CSSStyleRule[]> {
@@ -161,7 +213,9 @@ async function getCSSRules(
               const urlToFetch = resolveUrl(url, sheet.href, document, window)
               const deferred = fetchCSS(urlToFetch, window)
                 .then((metadata) => {
-                  return metadata ? embedFonts(metadata, document, window) : ''
+                  return metadata
+                    ? embedFonts(metadata, options, document, window)
+                    : ''
                 })
                 .then((cssText) =>
                   parseCSS(cssText).forEach((rule) => {
@@ -193,10 +247,12 @@ async function getCSSRules(
         const inline =
           styleSheets.find((a) => a.href == null) || document.styleSheets[0]
         if (sheet.href != null) {
+          const url = sheet.href
+          const urlToFetch = resolveUrl(url, sheet.href, document, window)
           deferreds.push(
-            fetchCSS(sheet.href, window)
+            fetchCSS(urlToFetch, window)
               .then((metadata) =>
-                metadata ? embedFonts(metadata, document, window) : '',
+                metadata ? embedFonts(metadata, options, document, window) : '',
               )
               .then((cssText) =>
                 parseCSS(cssText).forEach((rule) => {
@@ -218,11 +274,24 @@ async function getCSSRules(
     styleSheets.forEach((sheet) => {
       if ('cssRules' in sheet) {
         try {
-          toArray<CSSStyleRule>(sheet.cssRules).forEach(
-            (item: CSSStyleRule) => {
-              ret.push(item)
-            },
-          )
+          let styleSheetRules = toArray<CSSStyleRule>(sheet.cssRules)
+          if (
+            options.filterCSSRuleBySelectors &&
+            options.filterCSSRuleBySelectors.length > 0
+          ) {
+            styleSheetRules = styleSheetRules.filter(
+              (rule) =>
+                rule != null &&
+                !selectorsCompletelyAppliesToRule(
+                  options.filterCSSRuleBySelectors || [],
+                  rule,
+                ),
+            )
+          }
+
+          styleSheetRules.forEach((item: CSSStyleRule) => {
+            ret.push(item)
+          })
         } catch (e) {
           console.error(
             `Error while reading CSS rules from ${sheet.href}`,
@@ -244,6 +313,7 @@ function getWebFontRules(cssRules: CSSStyleRule[]): CSSStyleRule[] {
 
 async function parseWebFontRules<T extends HTMLElement>(
   node: T,
+  options: Options,
   document: Document,
   window: Window,
 ): Promise<CSSRule[]> {
@@ -254,7 +324,7 @@ async function parseWebFontRules<T extends HTMLElement>(
     resolve(toArray(node.ownerDocument.styleSheets))
   })
     .then((styleSheets: CSSStyleSheet[]) =>
-      getCSSRules(styleSheets, document, window),
+      getCSSRules(styleSheets, options, document, window),
     )
     .then(getWebFontRules)
 }
@@ -265,9 +335,9 @@ export async function getWebFontCSS<T extends HTMLElement>(
   document: Document,
   window: Window,
 ): Promise<string> {
-  return parseWebFontRules(node, document, window)
-    .then((rules) =>
-      Promise.all(
+  return parseWebFontRules(node, options, document, window)
+    .then((rules) => {
+      return Promise.all(
         rules.map((rule) => {
           const baseUrl = rule.parentStyleSheet
             ? rule.parentStyleSheet.href
@@ -280,8 +350,8 @@ export async function getWebFontCSS<T extends HTMLElement>(
             window,
           )
         }),
-      ),
-    )
+      )
+    })
     .then((cssTexts) => cssTexts.join('\n'))
 }
 

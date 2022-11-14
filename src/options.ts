@@ -99,4 +99,8 @@ export interface Options {
    * The part of the image to be exported
    */
   section?: Section
+  /**
+   * Filter css rule
+   */
+  filterCSSRuleBySelectors?: string[]
 }
