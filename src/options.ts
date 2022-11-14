@@ -100,7 +100,11 @@ export interface Options {
    */
   section?: Section
   /**
-   * Filter css rule
+   * Skip css rule
    */
-  filterCSSRuleBySelectors?: string[]
+  skipCSSRuleBySelectors?: string[]
+  /**
+   * Skip fetch url
+   */
+  skipURLs?: string[]
 }

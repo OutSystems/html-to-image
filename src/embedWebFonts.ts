@@ -53,16 +53,13 @@ function selectorsCompletelyAppliesToRule(
 
 async function embedFonts(
   meta: Metadata,
-  options: Options,
+  { skipCSSRuleBySelectors, skipURLs }: Options,
   document: Document,
   window: Window,
 ): Promise<string> {
   let cssText = await meta.cssText
 
-  if (
-    options.filterCSSRuleBySelectors &&
-    options.filterCSSRuleBySelectors.length > 0
-  ) {
+  if (skipCSSRuleBySelectors && skipCSSRuleBySelectors.length > 0) {
     let stylesheet = new CSSStyleSheet()
     stylesheet = await stylesheet.replace(cssText)
 
@@ -70,10 +67,7 @@ async function embedFonts(
     styleSheetRules = styleSheetRules.filter(
       (rule) =>
         rule != null &&
-        !selectorsCompletelyAppliesToRule(
-          options.filterCSSRuleBySelectors || [],
-          rule,
-        ),
+        !selectorsCompletelyAppliesToRule(skipCSSRuleBySelectors || [], rule),
     )
     cssText = styleSheetRules.map((r) => r.cssText).join('\n')
   }
@@ -82,6 +76,10 @@ async function embedFonts(
   const fontLocs = cssText.match(/url\([^)]+\)/g) || []
   const loadFonts = fontLocs.map((loc: string, index: number) => {
     const url = loc.replace(regexUrl, '$1')
+
+    if (skipURLs && skipURLs.includes(url)) {
+      return Promise.resolve(null)
+    }
 
     let urlToFetch = resolveUrl(url, meta.url, document, window)
 
@@ -261,14 +259,14 @@ async function getCSSRules(
         try {
           let styleSheetRules = toArray<CSSStyleRule>(sheet.cssRules)
           if (
-            options.filterCSSRuleBySelectors &&
-            options.filterCSSRuleBySelectors.length > 0
+            options.skipCSSRuleBySelectors &&
+            options.skipCSSRuleBySelectors.length > 0
           ) {
             styleSheetRules = styleSheetRules.filter(
               (rule) =>
                 rule != null &&
                 !selectorsCompletelyAppliesToRule(
-                  options.filterCSSRuleBySelectors || [],
+                  options.skipCSSRuleBySelectors || [],
                   rule,
                 ),
             )
