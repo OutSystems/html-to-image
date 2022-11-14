@@ -64,22 +64,7 @@ async function embedFonts(
     options.filterCSSRuleBySelectors.length > 0
   ) {
     let stylesheet = new CSSStyleSheet()
-
     stylesheet = await stylesheet.replace(cssText)
-
-    // const styleSheetRules = new Array<string>()
-    // for (let i = 0; i < stylesheet.cssRules.length; i += 1) {
-    //   const rule = stylesheet.cssRules.item(i)
-    //   if (
-    //     rule != null &&
-    //     !selectorsCompletelyAppliesToRule(
-    //       options.filterCSSRuleBySelectors,
-    //       rule,
-    //     )
-    //   ) {
-    //     styleSheetRules.push(rule.cssText)
-    //   }
-    // }
 
     let styleSheetRules = toArray<CSSRule>(stylesheet.cssRules)
     styleSheetRules = styleSheetRules.filter(
@@ -336,8 +321,8 @@ export async function getWebFontCSS<T extends HTMLElement>(
   window: Window,
 ): Promise<string> {
   return parseWebFontRules(node, options, document, window)
-    .then((rules) => {
-      return Promise.all(
+    .then((rules) =>
+      Promise.all(
         rules.map((rule) => {
           const baseUrl = rule.parentStyleSheet
             ? rule.parentStyleSheet.href
@@ -350,8 +335,8 @@ export async function getWebFontCSS<T extends HTMLElement>(
             window,
           )
         }),
-      )
-    })
+      ),
+    )
     .then((cssTexts) => cssTexts.join('\n'))
 }
 
