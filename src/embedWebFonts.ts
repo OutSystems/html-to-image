@@ -4,7 +4,7 @@ import { shouldEmbed, embedResources } from './embedResources'
 
 interface Metadata {
   url: string
-  cssText: Promise<string>
+  styleSheet: Promise<CSSStyleSheet>
 }
 
 const cssFetchCache: {
@@ -19,12 +19,15 @@ function fetchCSS(url: string, window: Window): Promise<void | Metadata> {
 
   const deferred = fetchWithTimeout(window, url).then((res) => ({
     url,
-    cssText: res.blob().then((blob) => {
+    styleSheet: res.blob().then((blob) => {
       return new Promise<string>((resolve, reject) => {
         const reader = new FileReader()
         reader.onloadend = () => resolve(reader.result as string)
         reader.onerror = reject
         reader.readAsText(blob)
+      }).then((cssText) => {
+        const stylesheet = new CSSStyleSheet()
+        return stylesheet.replace(cssText)
       })
     }),
   }))
@@ -57,21 +60,18 @@ async function embedFonts(
   document: Document,
   window: Window,
 ): Promise<string> {
-  let cssText = await meta.cssText
+  const styleSheet = await meta.styleSheet
+  let styleSheetRules = toArray<CSSRule>(styleSheet.cssRules)
 
   if (skipCSSRuleBySelectors && skipCSSRuleBySelectors.length > 0) {
-    let stylesheet = new CSSStyleSheet()
-    stylesheet = await stylesheet.replace(cssText)
-
-    let styleSheetRules = toArray<CSSRule>(stylesheet.cssRules)
     styleSheetRules = styleSheetRules.filter(
       (rule) =>
         rule != null &&
         !selectorsCompletelyAppliesToRule(skipCSSRuleBySelectors || [], rule),
     )
-    cssText = styleSheetRules.map((r) => r.cssText).join('\n')
   }
 
+  let cssText = styleSheetRules.map((r) => r.cssText).join('\n')
   const regexUrl = /url\(["']?([^"')]+)["']?\)/g
   const fontLocs = cssText.match(/url\([^)]+\)/g) || []
   const loadFonts = fontLocs.map((loc: string, index: number) => {
@@ -191,10 +191,14 @@ async function getCSSRules(
         toArray<CSSRule>(sheet.cssRules).forEach(
           (item: CSSRule, index: number) => {
             if (item.type === CSSRule.IMPORT_RULE) {
+              const importCSSRule = <CSSImportRule>item
               let importIndex = index + 1
               const url = (item as CSSImportRule).href
               const urlToFetch = resolveUrl(url, sheet.href, document, window)
-              const deferred = fetchCSS(urlToFetch, window)
+              const deferred = Promise.resolve({
+                url: urlToFetch,
+                styleSheet: Promise.resolve(importCSSRule.styleSheet),
+              })
                 .then((metadata) => {
                   return metadata
                     ? embedFonts(metadata, options, document, window)

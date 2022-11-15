@@ -100,11 +100,14 @@ export interface Options {
    */
   section?: Section
   /**
-   * Skip css rule
+   * Rules that must not be considered for fetching resources.
    */
   skipCSSRuleBySelectors?: string[]
   /**
-   * Skip fetch url
+   * Skip fetching specific URLs.
+   * TODO: this feature is partially implemented. If you use this, make sure the
+   * URL is being skipped, otherwise you may need to implement the missing parts
+   * of the feature.
    */
   skipURLs?: string[]
 }
