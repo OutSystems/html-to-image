@@ -36,7 +36,7 @@ export function embed(
     ? resolveUrl(resourceURL, baseURL, document, window)
     : resourceURL
 
-  if (options.skipURLs && options.skipURLs.includes(resourceURL)) {
+  if (options.skipURLs?.includes(resourceURL)) {
     return Promise.resolve(resolvedURL)
   }
 

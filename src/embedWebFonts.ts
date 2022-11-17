@@ -37,7 +37,7 @@ function fetchCSS(url: string, window: Window): Promise<void | Metadata> {
   return deferred
 }
 
-function selectorsCompletelyAppliesToRule(
+function selectorsCompletelyAppliesToStyleRule(
   selectors: string[],
   rule: CSSRule,
 ): boolean {
@@ -50,8 +50,40 @@ function selectorsCompletelyAppliesToRule(
     })
   }
 
-  // We are not applying to other types of rules
   return false
+}
+
+function dropRulesInMediaRuleAffectedBySelector(
+  selectors: string[],
+  rules: CSSRule[],
+): CSSRule[] {
+  rules
+    .filter((r) => r.type === CSSRule.MEDIA_RULE)
+    .forEach((rule) => {
+      const mediaRule = rule as CSSMediaRule
+      const mediaRuleRules = toArray<CSSRule>(mediaRule.cssRules)
+      const rulesToDrop = new Array<number>()
+      mediaRuleRules.forEach((r, index) => {
+        if (r != null && selectorsCompletelyAppliesToStyleRule(selectors, r)) {
+          rulesToDrop.push(index)
+        }
+      })
+
+      rulesToDrop.reverse().forEach((ruleIndex) => {
+        mediaRule.deleteRule(ruleIndex)
+      })
+    })
+
+  return rules
+}
+
+function dropStyleRulesAffectedBySelector(
+  selectors: string[],
+  rules: CSSRule[],
+): CSSRule[] {
+  return rules.filter(
+    (r) => r != null && !selectorsCompletelyAppliesToStyleRule(selectors, r),
+  )
 }
 
 async function embedFonts(
@@ -63,11 +95,17 @@ async function embedFonts(
   const styleSheet = await meta.styleSheet
   let styleSheetRules = toArray<CSSRule>(styleSheet.cssRules)
 
-  if (skipCSSRuleBySelectors && skipCSSRuleBySelectors.length > 0) {
-    styleSheetRules = styleSheetRules.filter(
-      (rule) =>
-        rule != null &&
-        !selectorsCompletelyAppliesToRule(skipCSSRuleBySelectors || [], rule),
+  if (skipCSSRuleBySelectors) {
+    // filter style rules
+    styleSheetRules = dropStyleRulesAffectedBySelector(
+      skipCSSRuleBySelectors,
+      styleSheetRules,
+    )
+
+    // filter media rules
+    styleSheetRules = dropRulesInMediaRuleAffectedBySelector(
+      skipCSSRuleBySelectors,
+      styleSheetRules,
     )
   }
 
@@ -180,8 +218,8 @@ async function getCSSRules(
   options: Options,
   document: Document,
   window: Window,
-): Promise<CSSStyleRule[]> {
-  const ret: CSSStyleRule[] = []
+): Promise<CSSRule[]> {
+  const ret: CSSRule[] = []
   const deferreds: Promise<number | void>[] = []
 
   // First loop inlines imports
@@ -261,22 +299,22 @@ async function getCSSRules(
     styleSheets.forEach((sheet) => {
       if ('cssRules' in sheet) {
         try {
-          let styleSheetRules = toArray<CSSStyleRule>(sheet.cssRules)
-          if (
-            options.skipCSSRuleBySelectors &&
-            options.skipCSSRuleBySelectors.length > 0
-          ) {
-            styleSheetRules = styleSheetRules.filter(
-              (rule) =>
-                rule != null &&
-                !selectorsCompletelyAppliesToRule(
-                  options.skipCSSRuleBySelectors || [],
-                  rule,
-                ),
+          let styleSheetRules = toArray<CSSRule>(sheet.cssRules)
+          if (options.skipCSSRuleBySelectors) {
+            // filter style rules
+            styleSheetRules = dropStyleRulesAffectedBySelector(
+              options.skipCSSRuleBySelectors,
+              styleSheetRules,
+            )
+
+            // filter media rules
+            styleSheetRules = dropRulesInMediaRuleAffectedBySelector(
+              options.skipCSSRuleBySelectors,
+              styleSheetRules,
             )
           }
 
-          styleSheetRules.forEach((item: CSSStyleRule) => {
+          styleSheetRules.forEach((item: CSSRule) => {
             ret.push(item)
           })
         } catch (e) {
@@ -292,10 +330,13 @@ async function getCSSRules(
   })
 }
 
-function getWebFontRules(cssRules: CSSStyleRule[]): CSSStyleRule[] {
+function getWebFontRules(cssRules: CSSRule[]): CSSRule[] {
   return cssRules
     .filter((rule) => rule.type === CSSRule.FONT_FACE_RULE)
-    .filter((rule) => shouldEmbed(rule.style.getPropertyValue('src')))
+    .filter((rule) => {
+      const fontRule = rule as CSSFontFaceRule
+      return shouldEmbed(fontRule.style.getPropertyValue('src'))
+    })
 }
 
 async function parseWebFontRules<T extends HTMLElement>(

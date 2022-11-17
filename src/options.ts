@@ -100,7 +100,8 @@ export interface Options {
    */
   section?: Section
   /**
-   * Rules that must not be considered for fetching resources.
+   * Rules that must not be considered for fetching resources. NOTE: the current implementation
+   * is simply doing a string comparison of the selectors.
    */
   skipCSSRuleBySelectors?: string[]
   /**
