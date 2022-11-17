@@ -112,7 +112,7 @@ async function embedFonts(
   let cssText = styleSheetRules.map((r) => r.cssText).join('\n')
   const regexUrl = /url\(["']?([^"')]+)["']?\)/g
   const fontLocs = cssText.match(/url\([^)]+\)/g) || []
-  const loadFonts = fontLocs.map((loc: string, index: number) => {
+  const loadFonts = fontLocs.map((loc: string) => {
     const url = loc.replace(regexUrl, '$1')
 
     if (skipURLs && skipURLs.includes(url)) {
